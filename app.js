@@ -4,10 +4,9 @@ require('dotenv').config();
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { MongoClient } = require('mongodb');
-
+const validator = require('./validation/validation.js');
 
 //Middleware 
-app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cors());
 app.use(bodyParser.json());
@@ -22,20 +21,26 @@ client.connect(err => {
 
 const db = client.db("hubLockerDB");// perform actions on the collection object
 
-
-// Routes
-// app.get('/api', (req, res) => {
-//     db.collection('country').find().toArray((err, docs) => {
-//         err ? console.log(err) : res.status(201).send({ status: 'Successful', docs });
-//     })
-// });
-
 app.get('/api/search/:query', (req, res) => {
     let data = req.params.query;
-    db.collection('country').find({ name: data }).toArray((err, result) => {
-        console.log(result);
-        err ? console.log(err) : res.status(201).send(result[0])
+    db.collection('city').findOne({ name: data }, (err, result) => {
+
+        err && res.send(401).json({ message: 'No Lockers' });
+
+        if (result == null) {
+            res.status(201).send({ message: 'No Lockers' });
+        } else if (result) {
+            db.collection('lockers').find({ tags: result._id }, (err, found) => {
+                err ? console.log(err) : found.toArray((err, found) => {
+                    err ? console.log(err) : res.status(201).json({ cityId: result._id, data: found });
+                })
+            })
+        }
     })
+
+    // .toArray((err, result) => {
+    //     err ? console.log(err) : res.status(201).send(result[0].stateId);
+    // })
     // res.status(201).send({ message: 'Received locker query', body: data });
 })
 
