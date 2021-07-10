@@ -1,4 +1,4 @@
-export class LockerModel {
-    id: String
+// export class LockerModel {
+//     id: String
 
-}
+// }

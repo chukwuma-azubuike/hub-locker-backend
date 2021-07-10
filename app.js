@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const { MongoClient } = require('mongodb');
 const validator = require('./validation/validation.js');
+const { json } = require('body-parser');
 
 //Middleware 
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -22,26 +23,41 @@ client.connect(err => {
 const db = client.db("hubLockerDB");// perform actions on the collection object
 
 app.get('/api/search/:query', (req, res) => {
+
     let data = req.params.query;
-    db.collection('city').findOne({ name: data }, (err, result) => {
 
-        err && res.send(401).json({ message: 'No Lockers' });
-
-        if (result == null) {
-            res.status(201).send({ message: 'No Lockers' });
-        } else if (result) {
-            db.collection('lockers').find({ tags: result._id }, (err, found) => {
-                err ? console.log(err) : found.toArray((err, found) => {
-                    err ? console.log(err) : res.status(201).json({ cityId: result._id, data: found });
-                })
+    db.collection('state').findOne({ name: data }, (err, result) => {
+        result == null ?
+            db.collection('city').findOne({ name: data }, (err, result) => {
+                result == null ? res.json(err) :
+                    db.collection('lockers').find({ tags: result._id }, (err, found) => {
+                        err ? res.json(err) :
+                            found.toArray((err, found) => {
+                                err ? res.json(err) :
+                                    res.status(201).json({ cityId: result._id, data: found })
+                            })
+                    })
             })
-        }
+            : db.collection('lockers').find({ tags: result._id }, (err, lockersFound) => {
+                err ? res.json(err) :
+                    lockersFound.toArray((err, lockersRendered) => {
+                        err ? res.json(err) :
+                            res.status(201).json({ stateId: result._id, data: lockersRendered })
+                    })
+            })
     })
+})
 
-    // .toArray((err, result) => {
-    //     err ? console.log(err) : res.status(201).send(result[0].stateId);
-    // })
-    // res.status(201).send({ message: 'Received locker query', body: data });
+app.get('/api/state/:stateId', (req, res) => {
+    let stateId = req.params.stateId;
+
+    db.collection('city').find({ stateId: stateId }, (err, foundCities) => {
+        err ? res.json(err) :
+            foundCities.toArray((err, renderCities) => {
+                err ? res.json(err) :
+                    res.status(201).json(renderCities)
+            })
+    })
 })
 
 
